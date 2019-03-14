@@ -13,19 +13,9 @@ import org.apache.spark.sql.DataFrame
 trait PropertyGraph {
 
   /**
-    * Returns all labels occurring on any node in the graph.
+    * Describes the structure of this graph.
     */
-  def labels: Set[String] = labelSets.flatten
-
-  /**
-    * Returns all distinct label sets occurring on nodes in the graph.
-    */
-  def labelSets: Set[Set[String]]
-
-  /**
-    * Returns all relationship types occurring on relationships in the graph.
-    */
-  def relationshipTypes: Set[String]
+  def schema: PropertyGraphSchema
 
   /**
     * The session in which this graph is managed.

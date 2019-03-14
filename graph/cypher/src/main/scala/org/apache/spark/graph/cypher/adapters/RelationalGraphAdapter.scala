@@ -1,6 +1,6 @@
 package org.apache.spark.graph.cypher.adapters
 
-import org.apache.spark.graph.api.{NodeFrame, PropertyGraph, RelationshipFrame}
+import org.apache.spark.graph.api.{NodeFrame, PropertyGraph, PropertyGraphSchema, RelationshipFrame}
 import org.apache.spark.graph.cypher.SparkTable.DataFrameTable
 import org.apache.spark.graph.cypher.adapters.MappingAdapter._
 import org.apache.spark.graph.cypher.{SparkCypherSession, SparkEntityTable}
@@ -10,6 +10,11 @@ case class RelationalGraphAdapter(
   cypherSession: SparkCypherSession,
   nodeFrames: Seq[NodeFrame],
   relationshipFrames: Seq[RelationshipFrame]) extends PropertyGraph {
+
+  override val schema: PropertyGraphSchema = new PropertyGraphSchema {
+    override def labelSets: Set[Set[String]] = graph.schema.labelCombinations.combos
+    override def relationshipTypes: Set[String] = graph.schema.relationshipTypes
+  }
 
   private [graph] lazy val graph = {
     val nodeTables = nodeFrames.map { nodeDataFrame => SparkEntityTable(nodeDataFrame.toNodeMapping, nodeDataFrame.df) }
@@ -24,10 +29,6 @@ case class RelationalGraphAdapter(
   override def nodes: DataFrame = graph.nodes("n").table.df
 
   override def relationships: DataFrame = graph.relationships("r").table.df
-
-  override def labelSets: Set[Set[String]] = graph.schema.labelCombinations.combos
-
-  override def relationshipTypes: Set[String] = graph.schema.relationshipTypes
 
   override def nodeFrame(labelSet: Set[String]): NodeFrame = _nodeFrame(labelSet)
 
