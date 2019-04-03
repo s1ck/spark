@@ -28,16 +28,16 @@ trait CypherSession {
   def cypher(graph: PropertyGraph, query: String, parameters: Map[String, Any]): CypherResult
 
   /**
-    * Creates a [[PropertyGraph]] from a sequence of [[NodeFrame]]s and [[RelationshipFrame]]s.
-    * At least one [[NodeFrame]] has to be provided.
+    * Creates a [[PropertyGraph]] from a sequence of [[DataFrame]]s and [[DataFrame]]s.
+    * At least one [[DataFrame]] has to be provided.
     *
-    * For each label set and relationship type there can be ar most on [[NodeFrame]] and
-    * [[RelationshipFrame]], respectively.
+    * For each label set and relationship type there can be ar most on [[DataFrame]] and
+    * [[DataFrame]], respectively.
     *
-    * @param nodes         [[NodeFrame]]s that define the nodes in the graph
-    * @param relationships [[RelationshipFrame]]s that define the relationships in the graph
+    * @param nodes         [[DataFrame]]s that define the nodes in the graph
+    * @param relationships [[DataFrame]]s that define the relationships in the graph
     */
-  def createGraph(nodes: Seq[NodeFrame], relationships: Seq[RelationshipFrame] = Seq.empty): PropertyGraph
+  def createGraph(nodes: Seq[DataFrame], relationships: Seq[DataFrame] = Seq.empty): PropertyGraph
 
   /**
     * Creates a [[PropertyGraph]] from nodes and relationships.
@@ -55,39 +55,36 @@ trait CypherSession {
     * Property columns: `{Property_Key}` (nodes and relationships)
     * }}}
     *
-    * @param nodes node [[DataFrame]]
+    * @param nodes         node [[DataFrame]]
     * @param relationships relationship [[DataFrame]]
     */
   def createGraph(nodes: DataFrame, relationships: DataFrame): PropertyGraph = {
-    val idColumn = "$ID"
-    val sourceIdColumn = "$SOURCE_ID"
-    val targetIdColumn = "$TARGET_ID"
+    if (nodes.isNodeFrame && relationships.isRelationshipFrame) {
+      createGraph(Seq(nodes), Seq(relationships))
+    } else {
+      val trueLit = functions.lit(true)
+      val falseLit = functions.lit(false)
 
-    val labelColumns = nodes.columns.filter(_.startsWith(":")).toSet
-    val nodeProperties = (nodes.columns.toSet - idColumn -- labelColumns).map(col => col -> col).toMap
+      val labelColumns = nodes.columns.filter(_.startsWith(":")).toSet
+      val labelSets = labelColumns.subsets().toSet + Set.empty
+      val nodeFrames = labelSets.map { labelSetColumns =>
+        val predicate = labelColumns.map {
+          case labelColumn if labelSetColumns.contains(labelColumn) => nodes.col(labelColumn) === trueLit
+          case labelColumn => nodes.col(labelColumn) === falseLit
+        }.reduce(_ && _)
+        val labelSet = labelSetColumns.map(_.substring(1))
+        nodes.filter(predicate).toNodeFrame(labelSet)
+      }
 
-    val trueLit = functions.lit(true)
-    val falseLit = functions.lit(false)
+      val relTypeColumns = relationships.columns.filter(_.startsWith(":")).toSet
+      val relFrames = relTypeColumns.map { relTypeColumn =>
+        val predicate = relationships.col(relTypeColumn) === trueLit
+        val relationshipType = relTypeColumn.substring(1)
+        relationships.filter(predicate).toRelationshipFrame(relationshipType)
+      }
 
-    // TODO: add empty set
-    val nodeFrames = labelColumns.subsets().map { labelSet =>
-      val predicate = labelColumns.map {
-        case labelColumn if labelSet.contains(labelColumn) => nodes.col(labelColumn) === trueLit
-        case labelColumn => nodes.col(labelColumn) === falseLit
-      }.reduce(_ && _)
-
-      NodeFrame(nodes.filter(predicate), idColumn, labelSet.map(_.substring(1)), nodeProperties)
+      createGraph(nodeFrames.toSeq, relFrames.toSeq)
     }
-
-    val relTypeColumns = relationships.columns.filter(_.startsWith(":")).toSet
-    val relProperties = (relationships.columns.toSet - idColumn - sourceIdColumn - targetIdColumn -- relTypeColumns).map(col => col -> col).toMap
-    val relFrames = relTypeColumns.map { relTypeColumn =>
-      val predicate = relationships.col(relTypeColumn) === trueLit
-
-      RelationshipFrame(relationships.filter(predicate), idColumn, sourceIdColumn, targetIdColumn, relTypeColumn.substring(1), relProperties)
-    }
-
-    createGraph(nodeFrames.toSeq, relFrames.toSeq)
   }
 
   /**

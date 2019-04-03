@@ -1,25 +1,26 @@
 package org.apache.spark.cypher.adapters
 
-import org.apache.spark.graph.api.{NodeFrame, RelationshipFrame}
+import org.apache.spark.sql.DataFrame
 import org.opencypher.okapi.api.io.conversion.{EntityMapping, NodeMappingBuilder, RelationshipMappingBuilder}
+import org.apache.spark.graph.api._
 
 object MappingAdapter {
 
-  implicit class RichNodeDataFrame(val nodeDf: NodeFrame) extends AnyVal {
+  implicit class RichNodeDataFrame(val nodeDf: DataFrame) extends AnyVal {
     def toNodeMapping: EntityMapping = NodeMappingBuilder
-      .on(nodeDf.idColumn)
-      .withImpliedLabels(nodeDf.labelSet.toSeq: _*)
-      .withPropertyKeyMappings(nodeDf.properties.toSeq:_*)
+      .on(idColumnName)
+      .withImpliedLabels(nodeDf.labels.toSeq: _*)
+      .withPropertyKeys(nodeDf.relationshipProperties.toSeq:_*)
       .build
   }
 
-  implicit class RichRelationshipDataFrame(val relDf: RelationshipFrame) extends AnyVal {
+  implicit class RichRelationshipDataFrame(val relDf: DataFrame) extends AnyVal {
     def toRelationshipMapping: EntityMapping = RelationshipMappingBuilder
-        .on(relDf.idColumn)
-        .withSourceStartNodeKey(relDf.sourceIdColumn)
-        .withSourceEndNodeKey(relDf.targetIdColumn)
+        .on(idColumnName)
+        .withSourceStartNodeKey(sourceIdColumnName)
+        .withSourceEndNodeKey(targetIdColumnName)
         .withRelType(relDf.relationshipType)
-        .withPropertyKeyMappings(relDf.properties.toSeq: _*)
+        .withPropertyKeys(relDf.relationshipProperties.toSeq: _*)
         .build
   }
 }

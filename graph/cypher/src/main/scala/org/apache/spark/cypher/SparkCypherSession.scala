@@ -2,9 +2,8 @@ package org.apache.spark.cypher
 
 import org.apache.spark.cypher.SparkTable.DataFrameTable
 import org.apache.spark.cypher.adapters.RelationalGraphAdapter
-import org.apache.spark.cypher.io.ReadWriteGraph._
 import org.apache.spark.graph.api._
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession, functions}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.opencypher.okapi.api.value.CypherValue.CypherMap
 import org.opencypher.okapi.impl.exception.{IllegalArgumentException, UnsupportedOperationException}
 import org.opencypher.okapi.relational.api.graph.{RelationalCypherGraph, RelationalCypherGraphFactory, RelationalCypherSession}
@@ -42,8 +41,8 @@ private[spark] class SparkCypherSession(override val sparkSession: SparkSession)
     throw UnsupportedOperationException("Graph construction with `CONSTRUCT` is not supported in Cypher 9")
   }
 
-  override def createGraph(nodes: Seq[NodeFrame], relationships: Seq[RelationshipFrame] = Seq.empty): PropertyGraph = {
-    require(nodes.groupBy(_.labelSet).forall(_._2.size == 1),
+  override def createGraph(nodes: Seq[DataFrame], relationships: Seq[DataFrame] = Seq.empty): PropertyGraph = {
+    require(nodes.groupBy(_.labels).forall(_._2.size == 1),
       "There can be at most one NodeFrame per label set")
     require(relationships.groupBy(_.relationshipType).forall(_._2.size == 1),
       "There can be at most one RelationshipFrame per relationship type")
@@ -59,30 +58,9 @@ private[spark] class SparkCypherSession(override val sparkSession: SparkSession)
 
   private val DEFAULT_FORMAT = "parquet"
 
-  override def load(path: String): PropertyGraph = {
-    val graphImporter = GraphImporter(sparkSession, path, DEFAULT_FORMAT)
-    createGraph(graphImporter.nodeFrames, graphImporter.relationshipFrames)
-  }
+  override def load(path: String): PropertyGraph = ???
 
-  override private[spark] def save(graph: PropertyGraph, path: String, saveMode: SaveMode): Unit = {
-    val relationalGraph = toRelationalGraph(graph)
-    val graphDirectoryStructure = SparkGraphDirectoryStructure(path)
-
-    relationalGraph.schema.labelCombinations.combos.foreach { combo =>
-      relationalGraph.canonicalNodeTable(combo)
-        .write
-        .format(DEFAULT_FORMAT)
-        .mode(saveMode)
-        .save(graphDirectoryStructure.pathToNodeTable(combo))
-    }
-    relationalGraph.schema.relationshipTypes.foreach { relType =>
-      relationalGraph.canonicalRelationshipTable(relType)
-        .write
-        .format(DEFAULT_FORMAT)
-        .mode(saveMode)
-        .save(graphDirectoryStructure.pathToRelationshipTable(relType))
-    }
-  }
+  override private[spark] def save(graph: PropertyGraph, path: String, saveMode: SaveMode): Unit = ???
 
   private def toRelationalGraph(graph: PropertyGraph): RelationalCypherGraph[DataFrameTable] = {
     graph match {

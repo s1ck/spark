@@ -30,20 +30,20 @@ trait PropertyGraph {
   def cypher(query: String, parameters: Map[String, Any] = Map.empty): CypherResult = cypherSession.cypher(this, query, parameters)
 
   /**
-    * Returns the [[NodeFrame]] for a given node label set.
+    * Returns the [[DataFrame]] for a given node label set.
     *
-    * @param labelSet Label set used for [[NodeFrame]] lookup
-    * @return [[NodeFrame]] for the given label set
+    * @param labelSet Label set used for [[DataFrame]] lookup
+    * @return [[DataFrame]] for the given label set
     */
-  def nodeFrame(labelSet: Set[String]): NodeFrame
+  def nodeFrame(labelSet: Set[String]): DataFrame
 
   /**
-    * Returns the [[RelationshipFrame]] for a given relationship type.
+    * Returns the [[DataFrame]] for a given relationship type.
     *
-    * @param relationshipType Relationship type used for [[RelationshipFrame]] lookup
-    * @return [[RelationshipFrame]] for the given relationship type
+    * @param relationshipType Relationship type used for [[DataFrame]] lookup
+    * @return [[DataFrame]] for the given relationship type
     */
-  def relationshipFrame(relationshipType: String): RelationshipFrame
+  def relationshipFrame(relationshipType: String): DataFrame
 
   /**
     * Returns a [[DataFrame]] that contains a row for each node in this graph.
